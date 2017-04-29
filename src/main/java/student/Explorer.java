@@ -1,9 +1,37 @@
 package student;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.Stack;
+
 import game.EscapeState;
 import game.ExplorationState;
+import game.NodeStatus;
 
 public class Explorer {
+
+  private Stack<Integer> visitedIds = new Stack<Integer>();
+  private ArrayList<NodeStatus> visited = new ArrayList<NodeStatus>();
+
+  private List<NodeStatus> getUnvisited(ExplorationState state) {
+    return state.getNeighbours().stream().filter(node -> {
+      return !this.visited.contains(node);
+    }).sorted((n1, n2) -> {
+      return Long.compare(n1.getDistanceToTarget(), n2.getDistanceToTarget());
+    }).collect(Collectors.toList());
+  }
+
+  private void retraceSteps(ExplorationState state) {
+    this.visitedIds.pop();
+    while (true) {
+      if (this.getUnvisited(state).size() > 0) {
+        this.visitedIds.push((int) (long) state.getCurrentLocation());
+        return;
+      }
+      state.moveTo(this.visitedIds.pop());
+    }
+  }
 
   /**
    * Explore the cavern, trying to find the orb in as few steps as possible.
@@ -36,7 +64,21 @@ public class Explorer {
    * @param state the information available at the current state
    */
   public void explore(ExplorationState state) {
-    //TODO:
+    while (true) {
+      if (state.getDistanceToTarget() == 0) {
+        return;
+      }
+      List<NodeStatus> nodes = this.getUnvisited(state);
+      if (nodes.size() > 0) {
+        NodeStatus node = nodes.get(0);
+        long id = node.getId();
+        this.visited.add(node);
+        this.visitedIds.push((int) (long) id);
+        state.moveTo(id);
+        continue;
+      }
+      this.retraceSteps(state);
+    }
   }
 
   /**
@@ -64,6 +106,6 @@ public class Explorer {
    * @param state the information available at the current state
    */
   public void escape(EscapeState state) {
-    //TODO: Escape from the cavern before time runs out
+
   }
 }
