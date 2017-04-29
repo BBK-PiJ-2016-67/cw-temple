@@ -4,10 +4,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.Stack;
+import java.util.Random;
 
 import game.EscapeState;
 import game.ExplorationState;
 import game.NodeStatus;
+import game.Node;
+import game.Tile;
 
 public class Explorer {
 
@@ -69,15 +72,15 @@ public class Explorer {
         return;
       }
       List<NodeStatus> nodes = this.getUnvisited(state);
-      if (nodes.size() > 0) {
-        NodeStatus node = nodes.get(0);
-        long id = node.getId();
-        this.visited.add(node);
-        this.visitedIds.push((int) (long) id);
-        state.moveTo(id);
+      if (nodes.size() == 0) {
+        this.retraceSteps(state);
         continue;
       }
-      this.retraceSteps(state);
+      NodeStatus node = nodes.get(0);
+      long id = node.getId();
+      this.visited.add(node);
+      this.visitedIds.push((int) (long) id);
+      state.moveTo(id);
     }
   }
 
@@ -106,6 +109,25 @@ public class Explorer {
    * @param state the information available at the current state
    */
   public void escape(EscapeState state) {
-
+    while (true) {
+      Node node = state.getCurrentNode();
+      if (node.equals(state.getExit())) {
+        return;
+      }
+      Tile tile = node.getTile();
+      int gold = tile.getGold();
+      if (gold > 0) {
+        state.pickUpGold();
+      }
+      Random rand = new Random();
+      int n = rand.nextInt(node.getNeighbours().size());
+      int i = 0;
+      for (Node neighbour: node.getNeighbours()) {
+        if (i == n) {
+          state.moveTo(neighbour);
+        }
+        i = i + 1;
+      }
+    }
   }
 }
