@@ -1,47 +1,18 @@
+apply plugin: 'java-library'
 apply plugin: 'java'
-apply plugin: 'jacoco'
-apply plugin: 'pmd'
+apply plugin: 'application'
 
-sourceCompatibility = 8
-targetCompatibility = 8
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
 
 repositories {
-    mavenCentral()
+    jcenter()
 }
 
 dependencies {
+    api 'org.apache.commons:commons-math3:3.6.1'
+    implementation 'com.google.guava:guava:20.0'
     testCompile 'junit:junit:4.12'
 }
 
-jacocoTestReport {
-    reports {
-        html.destination "${buildDir}/reports/coverage"
-    }
-}
-
-pmd {
-    ignoreFailures = true
-    toolVersion = "4.3"
-    sourceSets = [sourceSets.main]
-    reportsDir = file("$project.buildDir/reports/pmd")
-    ruleSets = [
-        "basic",
-        "braces",
-        "android",
-        "clone",
-        "codesize",
-        "design", 
-        "finalizers",
-        "imports",
-        "j2ee",
-        "junit",
-        "logging-jakarta-commons",
-        "logging-java",
-        "migrating",
-        "optimizations",
-        "strings",
-        "sunsecure",
-        "typeresolution",
-        "unusedcode"
-    ]
-}
+mainClassName = "main.GUImain"
