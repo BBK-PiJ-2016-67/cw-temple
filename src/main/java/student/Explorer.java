@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.Stack;
 import java.util.Random;
+import java.util.Set;
 
 import game.EscapeState;
 import game.ExplorationState;
@@ -84,6 +85,46 @@ public class Explorer {
     }
   }
 
+  private ArrayList<Node> optimalRoute = new ArrayList<Node>();
+  private int optimalRouteTotalGold = 0;
+
+  private void fork(long timeout, int limit, Node exit, Node node, ArrayList<Node> route, int gold, int distance) {
+    if (System.currentTimeMillis() >= timeout || distance > limit) {
+      return;
+    }
+    // Add node to route
+    route.add(node);
+    // Check if Terry has reached the exit
+    if (node.equals(exit)) {
+      if (optimalRouteTotalGold == 0 || gold > optimalRouteTotalGold) {
+        this.optimalRouteTotalGold = gold;
+        this.optimalRoute = route;
+      }
+      return;
+    }
+    // Get neighbours that haven't already been visited
+    // Sort by most gold
+    List<Node> neighbours = node.getNeighbours().stream().filter(n -> {
+      return !route.contains(n);
+    }).sorted((n1, n2) -> {
+      return Integer.compare(n2.getTile().getGold(), n1.getTile().getGold());
+    }).collect(Collectors.toList());
+
+    // Dead end
+    if (neighbours.size() == 0) {
+      return;
+    }
+
+    // Add gold to total
+    gold += node.getTile().getGold();
+
+    for (Node neighbour : neighbours) {
+      int weight = node.getEdge(neighbour).length();
+      ArrayList<Node> newRoute = new ArrayList<Node>(route);
+      this.fork(timeout, limit, exit, neighbour, newRoute, gold, distance + weight);
+    }
+  }
+
   /**
    * Escape from the cavern before the ceiling collapses, trying to collect as much
    * gold as possible along the way. Your solution must ALWAYS escape before time runs
@@ -109,25 +150,19 @@ public class Explorer {
    * @param state the information available at the current state
    */
   public void escape(EscapeState state) {
-    while (true) {
-      Node node = state.getCurrentNode();
-      if (node.equals(state.getExit())) {
-        return;
-      }
-      Tile tile = node.getTile();
-      int gold = tile.getGold();
-      if (gold > 0) {
+    long timeout = System.currentTimeMillis() + 10000L;
+
+    this.fork(timeout, state.getTimeRemaining(), state.getExit(), state.getCurrentNode(), new ArrayList<Node>(), 0, 0);
+
+    for (Node node : this.optimalRoute) {
+      Node current = state.getCurrentNode();
+      if (current.getTile().getGold() > 0) {
         state.pickUpGold();
       }
-      Random rand = new Random();
-      int n = rand.nextInt(node.getNeighbours().size());
-      int i = 0;
-      for (Node neighbour: node.getNeighbours()) {
-        if (i == n) {
-          state.moveTo(neighbour);
-        }
-        i = i + 1;
+      if (node.equals(current)) {
+        continue;
       }
+      state.moveTo(node);
     }
   }
 }
