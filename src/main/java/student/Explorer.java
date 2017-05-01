@@ -15,23 +15,12 @@ public class Explorer {
   private Stack<Integer> visitedIds = new Stack<Integer>();
   private ArrayList<NodeStatus> visited = new ArrayList<NodeStatus>();
 
-  private List<NodeStatus> getUnvisited(ExplorationState state) {
+  private List<NodeStatus> getOptions(ExplorationState state) {
     return state.getNeighbours().stream().filter(node -> {
       return !this.visited.contains(node);
     }).sorted((n1, n2) -> {
-      return Long.compare(n1.getDistanceToTarget(), n2.getDistanceToTarget());
+      return n1.compareTo(n2);
     }).collect(Collectors.toList());
-  }
-
-  private void retraceSteps(ExplorationState state) {
-    this.visitedIds.pop();
-    while (true) {
-      if (this.getUnvisited(state).size() > 0) {
-        this.visitedIds.push((int) (long) state.getCurrentLocation());
-        return;
-      }
-      state.moveTo(this.visitedIds.pop());
-    }
   }
 
   /**
@@ -69,16 +58,15 @@ public class Explorer {
       if (state.getDistanceToTarget() == 0) {
         return;
       }
-      List<NodeStatus> nodes = this.getUnvisited(state);
-      if (nodes.size() == 0) {
-        this.retraceSteps(state);
-        continue;
+      List<NodeStatus> options = this.getOptions(state);
+      if (options.size() == 0) {
+        this.visitedIds.pop();
+      } else {
+        NodeStatus node = options.get(0);
+        this.visited.add(node);
+        this.visitedIds.push((int) (long) node.getId());
       }
-      NodeStatus node = nodes.get(0);
-      long id = node.getId();
-      this.visited.add(node);
-      this.visitedIds.push((int) (long) id);
-      state.moveTo(id);
+      state.moveTo(this.visitedIds.peek());
     }
   }
 
