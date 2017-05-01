@@ -4,14 +4,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.Stack;
-import java.util.Random;
-import java.util.Set;
 
 import game.EscapeState;
 import game.ExplorationState;
 import game.NodeStatus;
 import game.Node;
-import game.Tile;
 
 public class Explorer {
 
@@ -85,44 +82,47 @@ public class Explorer {
     }
   }
 
-  private ArrayList<Node> optimalRoute = new ArrayList<Node>();
-  private int optimalRouteTotalGold = 0;
+  private Route getOptimalRoute(long timeout, int limit, Node exit, Route route) {
+    // Timeout
+    if (System.currentTimeMillis() >= timeout) {
+      return null;
+    }
 
-  private void fork(long timeout, int limit, Node exit, Node node, ArrayList<Node> route, int gold, int distance) {
-    if (System.currentTimeMillis() >= timeout || distance > limit) {
-      return;
-    }
-    // Add node to route
-    route.add(node);
-    // Check if Terry has reached the exit
-    if (node.equals(exit)) {
-      if (optimalRouteTotalGold == 0 || gold > optimalRouteTotalGold) {
-        this.optimalRouteTotalGold = gold;
-        this.optimalRoute = route;
-      }
-      return;
-    }
-    // Get neighbours that haven't already been visited
-    // Sort by most gold
-    List<Node> neighbours = node.getNeighbours().stream().filter(n -> {
-      return !route.contains(n);
-    }).sorted((n1, n2) -> {
-      return Integer.compare(n2.getTile().getGold(), n1.getTile().getGold());
-    }).collect(Collectors.toList());
+    List<Node> unvisitedNodes = route.getUnvisitedNodes();
 
     // Dead end
-    if (neighbours.size() == 0) {
-      return;
+    if (unvisitedNodes.size() == 0) {
+      return null;
     }
 
-    // Add gold to total
-    gold += node.getTile().getGold();
+    List<Route> routes = new ArrayList<Route>();
 
-    for (Node neighbour : neighbours) {
-      int weight = node.getEdge(neighbour).length();
-      ArrayList<Node> newRoute = new ArrayList<Node>(route);
-      this.fork(timeout, limit, exit, neighbour, newRoute, gold, distance + weight);
+    // DO threads here
+
+    for (Node neighbour : unvisitedNodes) {
+      Route newRoute = new RouteImpl(route);
+      newRoute.visitNode(neighbour);
+      if (newRoute.getDistance() > limit) {
+        continue;
+      } else if (newRoute.hasVisitedNode(exit)) {
+        routes.add(newRoute);
+        continue;
+      }
+      routes.add(this.getOptimalRoute(timeout, limit, exit, newRoute));
     }
+
+    // Filter out dead ends, sort by most gold
+    routes = routes.stream().filter(r -> {
+      return r != null && r.hasVisitedNode(exit);
+    }).sorted((r1, r2) -> {
+      return Integer.compare(r2.getGold(), r1.getGold());
+    }).collect(Collectors.toList());
+
+    if (routes.size() == 0) {
+      return null;
+    }
+
+    return routes.get(0);
   }
 
   /**
@@ -150,11 +150,19 @@ public class Explorer {
    * @param state the information available at the current state
    */
   public void escape(EscapeState state) {
+    Route route = new RouteImpl();
+    route.visitNode(state.getCurrentNode());
+
     long timeout = System.currentTimeMillis() + 10000L;
 
-    this.fork(timeout, state.getTimeRemaining(), state.getExit(), state.getCurrentNode(), new ArrayList<Node>(), 0, 0);
+    Route optimalRoute = this.getOptimalRoute(timeout, state.getTimeRemaining(), state.getExit(), route);
 
-    for (Node node : this.optimalRoute) {
+    if (optimalRoute == null) {
+      System.out.println("COULD NOT FIND ROUTE");
+      return;
+    }
+
+    for (Node node : optimalRoute.getNodes()) {
       Node current = state.getCurrentNode();
       if (current.getTile().getGold() > 0) {
         state.pickUpGold();

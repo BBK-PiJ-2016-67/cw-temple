@@ -5,6 +5,12 @@ apply plugin: 'application'
 sourceCompatibility = 1.8
 targetCompatibility = 1.8
 
+run {
+    if (project.hasProperty("appArgs")) {
+        args Eval.me(appArgs)
+    }
+}
+
 repositories {
     jcenter()
 }
@@ -15,4 +21,4 @@ dependencies {
     testCompile 'junit:junit:4.12'
 }
 
-mainClassName = "main.GUImain"
+mainClassName = "main.TXTmain"
