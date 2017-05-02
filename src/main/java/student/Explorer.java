@@ -1,6 +1,8 @@
 package student;
 
 import java.util.ArrayList;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ExecutorService;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.Stack;
@@ -11,17 +13,6 @@ import game.NodeStatus;
 import game.Node;
 
 public class Explorer {
-
-  private Stack<Integer> visitedIds = new Stack<Integer>();
-  private ArrayList<NodeStatus> visited = new ArrayList<NodeStatus>();
-
-  private List<NodeStatus> getOptions(ExplorationState state) {
-    return state.getNeighbours().stream().filter(node -> {
-      return !this.visited.contains(node);
-    }).sorted((n1, n2) -> {
-      return n1.compareTo(n2);
-    }).collect(Collectors.toList());
-  }
 
   /**
    * Explore the cavern, trying to find the orb in as few steps as possible.
@@ -54,63 +45,25 @@ public class Explorer {
    * @param state the information available at the current state
    */
   public void explore(ExplorationState state) {
-    while (true) {
-      if (state.getDistanceToTarget() == 0) {
-        return;
-      }
-      List<NodeStatus> options = this.getOptions(state);
+    Stack<Integer> visitedIds = new Stack<Integer>();
+    ArrayList<NodeStatus> visited = new ArrayList<NodeStatus>();
+
+    while (state.getDistanceToTarget() != 0) {
+      List<NodeStatus> options = state.getNeighbours().stream()
+        .filter(node -> !visited.contains(node))
+        .sorted((n1, n2) -> n1.compareTo(n2))
+        .collect(Collectors.toList());
+
       if (options.size() == 0) {
-        this.visitedIds.pop();
+        visitedIds.pop();
       } else {
         NodeStatus node = options.get(0);
-        this.visited.add(node);
-        this.visitedIds.push((int) (long) node.getId());
+        visited.add(node);
+        visitedIds.push((int) (long) node.getId());
       }
-      state.moveTo(this.visitedIds.peek());
+
+      state.moveTo(visitedIds.peek());
     }
-  }
-
-  private Route getOptimalRoute(long timeout, int limit, Node exit, Route route) {
-    // Timeout
-    if (System.currentTimeMillis() >= timeout) {
-      return null;
-    }
-
-    List<Node> unvisitedNodes = route.getUnvisitedNodes();
-
-    // Dead end
-    if (unvisitedNodes.size() == 0) {
-      return null;
-    }
-
-    List<Route> routes = new ArrayList<Route>();
-
-    // DO threads here
-
-    for (Node neighbour : unvisitedNodes) {
-      Route newRoute = new RouteImpl(route);
-      newRoute.visitNode(neighbour);
-      if (newRoute.getDistance() > limit) {
-        continue;
-      } else if (newRoute.hasVisitedNode(exit)) {
-        routes.add(newRoute);
-        continue;
-      }
-      routes.add(this.getOptimalRoute(timeout, limit, exit, newRoute));
-    }
-
-    // Filter out dead ends, sort by most gold
-    routes = routes.stream().filter(r -> {
-      return r != null && r.hasVisitedNode(exit);
-    }).sorted((r1, r2) -> {
-      return Integer.compare(r2.getGold(), r1.getGold());
-    }).collect(Collectors.toList());
-
-    if (routes.size() == 0) {
-      return null;
-    }
-
-    return routes.get(0);
   }
 
   /**
@@ -138,27 +91,41 @@ public class Explorer {
    * @param state the information available at the current state
    */
   public void escape(EscapeState state) {
-    Route route = new RouteImpl();
-    route.visitNode(state.getCurrentNode());
+    List<Crawler> crawlers = new ArrayList<Crawler>();
 
-    long timeout = System.currentTimeMillis() + 10000L;
+    int threadCount = 2000;
 
-    Route optimalRoute = this.getOptimalRoute(timeout, state.getTimeRemaining(), state.getExit(), route);
+    ExecutorService executor = Executors.newFixedThreadPool(threadCount);
 
-    if (optimalRoute == null) {
-      System.out.println("COULD NOT FIND ROUTE");
+    for (int i = 0; i < threadCount; i++) { 
+      Crawler crawler = new Crawler(state);
+      crawlers.add(crawler);
+      executor.execute(crawler);
+    }
+
+    executor.shutdown();
+
+    while (!executor.isTerminated()) {}
+
+    crawlers = crawlers.stream()
+      .filter(crawler -> {
+        return crawler.route != null && crawler.distance <= state.getTimeRemaining();
+      })
+      .sorted((c1, c2) -> c2.gold  - c1.gold)
+      .collect(Collectors.toList());
+
+    if (crawlers.size() == 0) {
       return;
     }
 
-    for (Node node : optimalRoute.getNodes()) {
+    for (Node node : crawlers.get(0).route) {
       Node current = state.getCurrentNode();
       if (current.getTile().getGold() > 0) {
         state.pickUpGold();
       }
-      if (node.equals(current)) {
-        continue;
+      if (!node.equals(current)) {
+        state.moveTo(node);
       }
-      state.moveTo(node);
     }
   }
 }
