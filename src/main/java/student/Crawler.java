@@ -8,11 +8,6 @@ import java.util.stream.Collectors;
 
 import game.Node;
 
-/**
- * An instance will begin at a given start node and traverse neighbouring
- * Nodes until a given exit node has been reached. The distance and amount
- * of gold found on the route is stored.
- */
 public class Crawler implements Runnable {
   private Node exitNode;
   private Node startNode;
@@ -40,21 +35,21 @@ public class Crawler implements Runnable {
   }
 
   /**
-   * Returns the distance of the route
+   * Returns the distance of the route.
    */
   public int getDistance() {
     return this.distance;
   }
 
   /**
-   * Returns the gold found on the route
+   * Returns the gold found on the route.
    */
   public int getGold() {
     return this.gold;
   }
 
   /**
-   * Returns the route
+   * Returns the route.
    */
   public List<Node> getRoute() {
     return this.route;
