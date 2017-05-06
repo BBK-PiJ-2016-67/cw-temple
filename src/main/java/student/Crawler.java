@@ -8,50 +8,85 @@ import java.util.stream.Collectors;
 
 import game.Node;
 
+/**
+ * An instance will begin at a given start node and traverse neighbouring
+ * Nodes until a given exit node has been reached. The distance and amount
+ * of gold found on the route is stored.
+ */
 public class Crawler implements Runnable {
   private Node exitNode;
   private Node startNode;
 
-  public int gold = 0;
-  public int distance = 0;
-  public List<Node> route;
+  private int distance = 0;
+  private int gold = 0;
+  private Stack<Node> route = new Stack<Node>();
 
   public Crawler(Node exitNode, Node startNode) {
     this.exitNode = exitNode;
     this.startNode = startNode;
   }
 
+  /**
+   * Traverses the route and calculates the total gold found and the total
+   * distance travelled taking weighted edges into account.
+   */
+  private void calculateDistanceAndGold() {
+    Node previousNode = this.startNode;
+    for (Node node : this.route) {
+      this.gold += node.getTile().getOriginalGold();
+      this.distance += previousNode.getEdge(node).length();
+      previousNode = node;
+    }
+  }
+
+  /**
+   * Returns the distance of the route
+   */
+  public int getDistance() {
+    return this.distance;
+  }
+
+  /**
+   * Returns the gold found on the route
+   */
+  public int getGold() {
+    return this.gold;
+  }
+
+  /**
+   * Returns the route
+   */
+  public List<Node> getRoute() {
+    return this.route;
+  }
+
+  /**
+   * Added to implement the Runnable interface. At each fork, an unvisited
+   * neighouring node is explored until the exit node is found. Upon
+   * completion, the distance and gold for the route is calculated.
+   */
   public void run() {
-    Stack<Node> visited = new Stack<Node>();
-    ArrayList<Node> route = new ArrayList<Node>();
+    ArrayList<Node> visitedNodes = new ArrayList<Node>();
+
     Node node = this.startNode;
+
     while (node != this.exitNode) {
       List<Node> options = node.getNeighbours().stream()
-        .filter(option -> !route.contains(option))
+        .filter(option -> !visitedNodes.contains(option))
         .collect(Collectors.toList());
 
       if (options.size() == 0) {
-        visited.pop();
+        this.route.pop();
       } else {
         Random r = new Random();
         Node nextNode = options.get(r.nextInt(options.size()));
-        route.add(nextNode);
-        visited.push(nextNode);
+        visitedNodes.add(nextNode);
+        this.route.push(nextNode);
       }
 
-      node = visited.peek();
+      node = this.route.peek();
     }
 
-    for (int i = 0; i < visited.size(); i++) {
-      Node visitedNode = visited.get(i);
-      this.gold += visitedNode.getTile().getOriginalGold();
-      if (i == 0) {
-        this.distance += this.startNode.getEdge(visitedNode).length();
-        continue;
-      }
-      this.distance += visited.get(i - 1).getEdge(visitedNode).length();
-    }
-
-    this.route = visited;
+    this.calculateDistanceAndGold();
   }
 }

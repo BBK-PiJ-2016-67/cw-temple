@@ -45,24 +45,24 @@ public class Explorer {
    * @param state the information available at the current state
    */
   public void explore(ExplorationState state) {
-    Stack<Integer> visitedIds = new Stack<Integer>();
-    ArrayList<NodeStatus> visited = new ArrayList<NodeStatus>();
+    Stack<Integer> visited = new Stack<Integer>();
+    ArrayList<NodeStatus> route = new ArrayList<NodeStatus>();
 
     while (state.getDistanceToTarget() != 0) {
       List<NodeStatus> options = state.getNeighbours().stream()
-        .filter(node -> !visited.contains(node))
+        .filter(node -> !route.contains(node))
         .sorted((n1, n2) -> n1.compareTo(n2))
         .collect(Collectors.toList());
 
       if (options.size() == 0) {
-        visitedIds.pop();
+        visited.pop();
       } else {
         NodeStatus node = options.get(0);
-        visited.add(node);
-        visitedIds.push((int) (long) node.getId());
+        route.add(node);
+        visited.push((int) (long) node.getId());
       }
 
-      state.moveTo(visitedIds.peek());
+      state.moveTo(visited.peek());
     }
   }
 
@@ -109,23 +109,20 @@ public class Explorer {
 
     crawlers = crawlers.stream()
       .filter(crawler -> {
-        return crawler.route != null && crawler.distance <= state.getTimeRemaining();
+        return crawler.getRoute() != null && crawler.getDistance() <= state.getTimeRemaining();
       })
-      .sorted((c1, c2) -> c2.gold  - c1.gold)
+      .sorted((c1, c2) -> c2.getGold()  - c1.getGold())
       .collect(Collectors.toList());
 
     if (crawlers.size() == 0) {
       return;
     }
 
-    for (Node node : crawlers.get(0).route) {
-      Node current = state.getCurrentNode();
-      if (current.getTile().getGold() > 0) {
+    for (Node node : crawlers.get(0).getRoute()) {
+      if (state.getCurrentNode().getTile().getGold() > 0) {
         state.pickUpGold();
       }
-      if (!node.equals(current)) {
-        state.moveTo(node);
-      }
+      state.moveTo(node);
     }
   }
 }
