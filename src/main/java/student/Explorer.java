@@ -98,7 +98,7 @@ public class Explorer {
     ExecutorService executor = Executors.newFixedThreadPool(threadCount);
 
     for (int i = 0; i < threadCount; i++) { 
-      Crawler crawler = new Crawler(state);
+      Crawler crawler = new Crawler(state.getExit(), state.getCurrentNode());
       crawlers.add(crawler);
       executor.execute(crawler);
     }

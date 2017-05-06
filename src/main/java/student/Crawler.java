@@ -6,7 +6,6 @@ import java.util.Random;
 import java.util.Stack;
 import java.util.stream.Collectors;
 
-import game.EscapeState;
 import game.Node;
 
 public class Crawler implements Runnable {
@@ -17,9 +16,9 @@ public class Crawler implements Runnable {
   public int distance = 0;
   public List<Node> route;
 
-  public Crawler(EscapeState state) {
-    this.exitNode = state.getExit();
-    this.startNode = state.getCurrentNode();
+  public Crawler(Node exitNode, Node startNode) {
+    this.exitNode = exitNode;
+    this.startNode = startNode;
   }
 
   public void run() {
@@ -39,6 +38,7 @@ public class Crawler implements Runnable {
         route.add(nextNode);
         visited.push(nextNode);
       }
+
       node = visited.peek();
     }
 
