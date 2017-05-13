@@ -93,7 +93,7 @@ public class Explorer {
   public void escape(EscapeState state) {
     List<Crawler> crawlers = new ArrayList<Crawler>();
 
-    int threadCount = 2000;
+    int threadCount = 1000;
 
     ExecutorService executor = Executors.newFixedThreadPool(threadCount);
 
